@@ -2,6 +2,7 @@ import type { RpcResponse, Settings } from '@/shared/types';
 import { getTopDomainsToday } from './aggregator';
 import { loadBreaksForDay, nukeDB } from './db';
 import { getState, startWork, startBreak, pause, resume, stop, setSettings } from './fsm';
+import Logger from './logger';
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
@@ -26,6 +27,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           const dayKey = msg?.dayKey ?? new Date().toISOString().slice(0,10);
           res = { ok:true, data: await loadBreaksForDay(dayKey) }; break;
         case 'NUKE_DB': await nukeDB(); res = { ok:true, data:true }; break;
+        case 'DIAG_GET_RING': res = { ok:true, data: Logger.getRing() }; break;
         default: res = { ok:false, error:'Unknown message' };
       }
       sendResponse(res);
