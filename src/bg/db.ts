@@ -8,6 +8,7 @@ export class AppDB extends Dexie {
     this.version(1).stores({
       sessionLogs: '++id,[dayKey+phase],phase,dayKey,startedAt'
     });
+
   }
 }
 export const db = new AppDB();
@@ -15,22 +16,24 @@ export const db = new AppDB();
 export async function loadBreaksForDay(dayKey: string) {
   try {
     if (!db.isOpen()) await db.open();
-    return await db.sessionLogs.where('[dayKey+phase]').equals([dayKey,'break']).toArray();
+    // не полагаться на свойство, всегда брать через table(...)
+    return await db.table('sessionLogs')
+      .where('[dayKey+phase]')
+      .equals([dayKey, 'break'])
+      .toArray();
   } catch {
-    const all = await db.sessionLogs.toArray();
+    // fallback без индекса
+    const all = await db.table('sessionLogs').toArray();
     return all.filter(r => r.dayKey === dayKey && r.phase === 'break');
   }
 }
 
-export async function nukeDB(){
+export async function nukeDB() {
   await db.close();
-  
-  return new Promise<void>((resolve, reject) => {
-    const request = indexedDB.deleteDatabase(db.name);
-    request.onsuccess = async () => {
-      await db.open();
-      resolve();
-    };
-    request.onerror = () => reject(request.error);
+  await new Promise<void>((res, rej) => {
+    const req = indexedDB.deleteDatabase(db.name);
+    req.onsuccess = () => res();
+    req.onerror = () => rej(req.error);
   });
+  await db.open();
 }

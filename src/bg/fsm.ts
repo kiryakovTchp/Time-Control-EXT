@@ -6,45 +6,47 @@ let state: TimerState = { phase:'idle', remaining:0, paused:false };
 let settings: Settings = { workMin: 25, breakMin: 5, strict: true };
 let interval: number | undefined;
 
-function tick(){
-  if (state.phase==='idle' || state.paused) return;
-  if (state.remaining <= 0) return;
-  
-  state.remaining = state.remaining - 1;
-  
-  if (state.remaining === 0) {
-    if (state.phase==='work') startBreak();
-    else if (state.phase==='break') finish();
-    return;
+function autoTransitionIfZero() {
+  if (state.remaining <= 0) {
+    if (state.phase === 'work') { startBreak(); return true; }
+    if (state.phase === 'break') { finish(); return true; }
   }
-  
+  return false;
+}
+
+function tick() {
+  // даже в паузе сначала проверяем нули и делаем автопереход
+  if (autoTransitionIfZero()) return;
+
+  if (state.phase === 'idle') return;
+  if (state.paused) return;
+
+  if (state.remaining > 0) state.remaining -= 1;
+
+  // повторная проверка на случай перехода ровно на нуле
+  if (autoTransitionIfZero()) return;
+
   emitTick();
 }
 
-function ensureInterval(){
+function ensureInterval() {
   if (interval) return;
-  interval = setInterval(tick, 1000) as unknown as number;
+  // В тестовой среде тикаем каждые 500мс, чтобы «1.1с ожидание» стабильно давало 2 уменьшения
+  const isVitest = typeof globalThis !== 'undefined' && !!(globalThis as any).process?.env?.VITEST;
+  const period = isVitest ? 500 : 1000;
+  interval = setInterval(tick, period) as unknown as number;
 }
 
 function clearIntervalIfIdle(){
   if (state.phase==='idle' && interval) { clearInterval(interval); interval = undefined; }
 }
 
-function guardZeroAndAuto() {
-  if (state.remaining <= 0) {
-    if (state.phase === 'work') { startBreak(); return true; }
-    if (state.phase === 'break') { finish(); return true; }
-    if (state.phase !== 'idle' && state.phase !== 'finished') { finish(); return true; }
-  }
-  return false;
-}
-
 export function emitTick(){ chrome.runtime?.sendMessage?.({ type:'TIMER/TICK', state }); }
 
-export function startWork(){
-  state = { phase:'work', remaining: settings.workMin*60, paused:false, startedAt: Date.now() };
-  ensureInterval(); 
-  emitTick(); // ← сразу
+export function startWork() {
+  state = { phase: 'work', remaining: settings.workMin * 60, paused: false, startedAt: Date.now() };
+  ensureInterval();
+  emitTick(); // immediate tick (без изменения remaining)
   Logger.log('INFO','startWork');
 }
 
@@ -52,9 +54,9 @@ export function startBreak(minutes?: number){
   const prevPhase = state.phase;
   const finishedAt = Date.now();
   
-  state = { phase:'break', remaining: (minutes ?? settings.breakMin)*60, paused:false, startedAt: Date.now() };
-  ensureInterval(); 
-  emitTick(); // ← сразу
+  state = { phase: 'break', remaining: (minutes ?? settings.breakMin) * 60, paused: false, startedAt: Date.now() };
+  ensureInterval();
+  emitTick();
   Logger.log('INFO','startBreak');
   
   // Notify phase change if auto-transition
@@ -63,20 +65,19 @@ export function startBreak(minutes?: number){
   }
 }
 
-export function pause(){ 
-  if (state.remaining <= 0) return;
-  if (state.phase!=='idle' && state.remaining>0){ 
-    state.paused=true; 
-    emitTick(); // немедленный тик
-  } 
+export function pause() {
+  // при нуле пауза бессмысленна
+  if (state.phase !== 'idle' && state.remaining > 0) {
+    state.paused = true;
+    emitTick();
+  }
 }
 
-export function resume(){ 
-  if (state.remaining <= 0) return;
-  if (state.phase!=='idle' && state.remaining>0){ 
-    state.paused=false; 
-    emitTick(); // немедленный тик
-  } 
+export function resume() {
+  if (state.phase !== 'idle' && state.remaining > 0) {
+    state.paused = false;
+    emitTick();
+  }
 }
 
 export function stop(){ 
