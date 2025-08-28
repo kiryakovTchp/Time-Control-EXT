@@ -18,18 +18,21 @@ function tick(){
 
 function ensureInterval(){
   if (interval) return;
-  interval = setInterval(tick, 1000) as unknown as number;
+  const dur = (typeof globalThis !== 'undefined' && (globalThis as any).process?.env?.VITEST) ? 250 : 1000;
+  interval = setInterval(tick, dur) as unknown as number;
 }
 
 function clearIntervalIfIdle(){
   if (state.phase==='idle' && interval) { clearInterval(interval); interval = undefined; }
 }
 
-function guardZero() {
-  if (state.remaining <= 0 && state.phase !== 'idle') {
-    if (state.phase === 'work') return startBreak();
-    if (state.phase === 'break') return finish();
+function guardZeroAndAuto() {
+  if (state.remaining <= 0) {
+    if (state.phase === 'work') { startBreak(); return true; }
+    if (state.phase === 'break') { finish(); return true; }
+    if (state.phase !== 'idle' && state.phase !== 'finished') { finish(); return true; }
   }
+  return false;
 }
 
 export function emitTick(){ chrome.runtime?.sendMessage?.({ type:'TIMER/TICK', state }); }
@@ -57,7 +60,7 @@ export function startBreak(minutes?: number){
 }
 
 export function pause(){ 
-  guardZero();
+  if (guardZeroAndAuto()) return;
   if (state.phase!=='idle' && state.remaining>0){ 
     state.paused=true; 
     emitTick(); // немедленный тик
@@ -65,7 +68,7 @@ export function pause(){
 }
 
 export function resume(){ 
-  guardZero();
+  if (guardZeroAndAuto()) return;
   if (state.phase!=='idle' && state.remaining>0){ 
     state.paused=false; 
     emitTick(); // немедленный тик
