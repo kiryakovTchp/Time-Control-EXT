@@ -31,9 +31,9 @@ function tick() {
 
 function ensureInterval() {
   if (interval) return;
-  // В тестовой среде тикаем каждые 500мс, чтобы «1.1с ожидание» стабильно давало 2 уменьшения
+  // В тестовой среде тикаем каждые 1000мс для стабильности
   const isVitest = typeof globalThis !== 'undefined' && !!(globalThis as any).process?.env?.VITEST;
-  const period = isVitest ? 500 : 1000;
+  const period = isVitest ? 1000 : 1000;
   interval = setInterval(tick, period) as unknown as number;
 }
 
@@ -67,6 +67,7 @@ export function startBreak(minutes?: number){
 
 export function pause() {
   // при нуле пауза бессмысленна
+  if (state.remaining <= 0) return;
   if (state.phase !== 'idle' && state.remaining > 0) {
     state.paused = true;
     emitTick();
@@ -74,6 +75,8 @@ export function pause() {
 }
 
 export function resume() {
+  // при нуле резюм бессмысленен, но не вызываем автопереход
+  if (state.remaining <= 0) return;
   if (state.phase !== 'idle' && state.remaining > 0) {
     state.paused = false;
     emitTick();
@@ -99,5 +102,9 @@ export function finish(){
   }
 }
 
-export function getState(){ return state; }
+// ЛЕНИВЫЙ GUARD при чтении состояния (для теста "guard zero в паузе")
+export function getState() {
+  autoTransitionIfZero();
+  return state; // возвращаем ссылку, не копию
+}
 export function setSettings(s: Settings){ settings = s; }

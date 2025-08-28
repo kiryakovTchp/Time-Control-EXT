@@ -8,32 +8,50 @@ export class AppDB extends Dexie {
     this.version(1).stores({
       sessionLogs: '++id,[dayKey+phase],phase,dayKey,startedAt'
     });
-
   }
 }
-export const db = new AppDB();
+
+let _db: AppDB | null = null;
+
+export function getDB(): AppDB {
+  if (_db && typeof (_db as any).table === 'function') return _db;
+  _db = new AppDB();
+  return _db;
+}
 
 export async function loadBreaksForDay(dayKey: string) {
+  const db = getDB();
   try {
     if (!db.isOpen()) await db.open();
-    // не полагаться на свойство, всегда брать через table(...)
-    return await db.table('sessionLogs')
+    
+    // Проверяем что sessionLogs существует
+    if (!db.sessionLogs) {
+      return [];
+    }
+    
+    return await db.sessionLogs
       .where('[dayKey+phase]')
       .equals([dayKey, 'break'])
       .toArray();
   } catch {
-    // fallback без индекса
-    const all = await db.table('sessionLogs').toArray();
-    return all.filter(r => r.dayKey === dayKey && r.phase === 'break');
+    // fallback
+    try {
+      const all = await db.sessionLogs?.toArray() || [];
+      return all.filter(x => x.dayKey === dayKey && x.phase === 'break');
+    } catch {
+      return [];
+    }
   }
 }
 
 export async function nukeDB() {
+  const db = getDB();
   await db.close();
   await new Promise<void>((res, rej) => {
     const req = indexedDB.deleteDatabase(db.name);
     req.onsuccess = () => res();
     req.onerror = () => rej(req.error);
   });
-  await db.open();
+  _db = null; // форсим пересоздание
+  await getDB().open();
 }

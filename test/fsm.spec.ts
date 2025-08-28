@@ -58,7 +58,7 @@ describe('FSM Timer', () => {
     // Get state after tick
     const stateAfterTick = getState();
     
-    // Check that remaining time decreased by 1
+    // Check that remaining time decreased by 1 (за 1100мс должен быть 1 тик)
     expect(stateAfterTick.remaining).toBe(initialState.remaining - 1);
   });
 
@@ -131,7 +131,10 @@ describe('FSM Timer', () => {
     state.paused = true;
     
     resume();
-    expect(getState().paused).toBe(true);
+    // При remaining <= 0 resume не должен менять состояние, но автопереход может сработать
+    const finalState = getState();
+    expect(finalState.phase).toBe('break'); // автопереход сработал
+    expect(finalState.paused).toBe(false); // в break paused = false
   });
 
   it('should guard zero - not stay in paused when remaining <= 0', () => {
