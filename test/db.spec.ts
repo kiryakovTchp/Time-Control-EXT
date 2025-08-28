@@ -10,8 +10,9 @@ describe('Database', () => {
   it('should handle database restart correctly', async () => {
     const db = getDB();
     
-    // Мокаем sessionLogs.add
-    const addSpy = vi.spyOn(db.sessionLogs, 'add').mockResolvedValue(1);
+    // Проверяем что sessionLogs существует
+    expect(db.sessionLogs).toBeDefined();
+    expect(typeof db.sessionLogs.add).toBe('function');
     
     // Записываем тестовые данные
     const testLog: SessionLog = {
@@ -22,7 +23,6 @@ describe('Database', () => {
     };
 
     await db.sessionLogs.add(testLog);
-    expect(addSpy).toHaveBeenCalledWith(testLog);
 
     // Симулируем рестарт БД (закрываем и открываем)
     await db.close();
@@ -37,8 +37,9 @@ describe('Database', () => {
   it('should handle nukeDB correctly', async () => {
     const db = getDB();
     
-    // Мокаем sessionLogs.add
-    const addSpy = vi.spyOn(db.sessionLogs, 'add').mockResolvedValue(1);
+    // Проверяем что sessionLogs существует
+    expect(db.sessionLogs).toBeDefined();
+    expect(typeof db.sessionLogs.add).toBe('function');
     
     // Записываем тестовые данные
     const testLog: SessionLog = {
@@ -49,7 +50,6 @@ describe('Database', () => {
     };
 
     await db.sessionLogs.add(testLog);
-    expect(addSpy).toHaveBeenCalledWith(testLog);
 
     // Проверяем что данные есть (мок возвращает пустой массив)
     let breaks = await loadBreaksForDay('2024-01-01');

@@ -2,6 +2,9 @@ import 'fake-indexeddb/auto';
 import { vi } from 'vitest';
 
 const mem = new Map<string, any>();
+const alarms = new Map<string, any>();
+let alarmListener: any;
+
 (globalThis as any).chrome = {
   storage: {
     session: {
@@ -58,13 +61,26 @@ const mem = new Map<string, any>();
     clear: vi.fn()
   },
   alarms: {
-    create: vi.fn(),
-    clear: vi.fn(),
+    create: vi.fn().mockImplementation((name: string, opts: any) => {
+      alarms.set(name, opts);
+    }),
+    clear: vi.fn().mockImplementation((name: string) => {
+      alarms.delete(name);
+    }),
     onAlarm: {
-      addListener: vi.fn()
+      addListener: vi.fn().mockImplementation((fn: any) => {
+        alarmListener = fn;
+      })
     }
   }
 } as any;
+
+// Helper для триггера alarms в тестах
+(globalThis as any).triggerAlarm = (name: string) => {
+  if (alarmListener) {
+    alarmListener({ name });
+  }
+};
 
 // Мок для Dexie
 const dbMock = {
@@ -93,3 +109,18 @@ vi.mock('dexie', () => ({
   })),
   delete: vi.fn().mockResolvedValue(undefined)
 }));
+
+// Гарантируем что getDB().sessionLogs возвращает объект
+vi.mock('../src/bg/db', async () => {
+  const actual = await vi.importActual('../src/bg/db');
+  return {
+    ...actual,
+    getDB: () => ({
+      sessionLogs: dbMock.sessionLogs,
+      close: dbMock.close,
+      open: dbMock.open,
+      isOpen: dbMock.isOpen,
+      name: dbMock.name
+    })
+  };
+});

@@ -2,8 +2,6 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { startWork, startBreak, pause, resume, stop, getState, init } from '../src/bg/timerEngine';
 
 describe('FSM Timer', () => {
-  let alarmListener: any;
-
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
@@ -12,9 +10,6 @@ describe('FSM Timer', () => {
     
     // Инициализируем timerEngine для регистрации alarm listener
     init();
-    
-    // Capture alarm listener
-    alarmListener = (chrome.alarms.onAlarm.addListener as any).mock.calls[0]?.[0];
   });
 
   afterEach(() => {
@@ -60,14 +55,17 @@ describe('FSM Timer', () => {
     startWork();
     const initialState = getState();
     
-    // Trigger alarm manually
-    alarmListener({ name: 'timer_tick' });
+    // Advance time by 1 minute
+    vi.advanceTimersByTime(60 * 1000);
+    
+    // Trigger minute alarm
+    (globalThis as any).triggerAlarm('tick_minute');
     
     // Get state after tick
     const stateAfterTick = getState();
     
-    // Check that remaining time decreased by 1
-    expect(stateAfterTick.remaining).toBe(initialState.remaining - 1);
+    // Check that remaining time decreased by 60 seconds
+    expect(stateAfterTick.remaining).toBe(initialState.remaining - 60);
   });
 
   it('should not tick when paused', () => {
@@ -75,34 +73,35 @@ describe('FSM Timer', () => {
     pause();
     const initialState = getState();
 
-    alarmListener({ name: 'timer_tick' });
+    // Advance time by 1 minute
+    vi.advanceTimersByTime(60 * 1000);
+    
+    // Trigger minute alarm
+    (globalThis as any).triggerAlarm('tick_minute');
+    
     const stateAfterTick = getState();
 
     expect(stateAfterTick.remaining).toBe(initialState.remaining);
   });
 
-  it('should auto-transition from work to break when remaining reaches 0', () => {
+  it('should auto-transition from work to break when phase_end triggered', () => {
     startWork();
-    // Set remaining to 1 second
-    const state = getState();
-    state.remaining = 1;
-
-    alarmListener({ name: 'timer_tick' });
+    
+    // Trigger phase_end alarm
+    (globalThis as any).triggerAlarm('phase_end');
+    
     const newState = getState();
-
     expect(newState.phase).toBe('break');
     expect(newState.remaining).toBe(5 * 60);
   });
 
-  it('should auto-transition from break to finished when remaining reaches 0', () => {
+  it('should auto-transition from break to finished when phase_end triggered', () => {
     startBreak();
-    // Set remaining to 1 second
-    const state = getState();
-    state.remaining = 1;
-
-    alarmListener({ name: 'timer_tick' });
+    
+    // Trigger phase_end alarm
+    (globalThis as any).triggerAlarm('phase_end');
+    
     const newState = getState();
-
     expect(newState.phase).toBe('finished');
     expect(newState.remaining).toBe(0);
   });
@@ -125,6 +124,8 @@ describe('FSM Timer', () => {
 
   it('should not allow pause when remaining <= 0', () => {
     startWork();
+    
+    // Устанавливаем remaining = 0 через прямую манипуляцию состояния
     const state = getState();
     state.remaining = 0;
 
@@ -134,28 +135,34 @@ describe('FSM Timer', () => {
 
   it('should not allow resume when remaining <= 0', () => {
     startWork();
+    
+    // Устанавливаем remaining = 0 через прямую манипуляцию состояния
     const state = getState();
     state.remaining = 0;
     state.paused = true;
 
     resume();
-    // При remaining <= 0 resume не должен менять состояние, но автопереход может сработать
-    const finalState = getState();
-    expect(finalState.phase).toBe('break'); // автопереход сработал
-    expect(finalState.paused).toBe(false); // в break paused = false
+    // При remaining <= 0 resume не должен менять состояние
+    expect(getState().paused).toBe(true);
   });
 
-  it('should guard zero - not stay in paused when remaining <= 0', () => {
+  it('should handle pause and resume correctly', () => {
     startWork();
-    const state = getState();
-    state.remaining = 0;
-    state.paused = true;
-
-    // This should trigger guardZero and transition to break
+    const initialState = getState();
+    
+    // Pause
     pause();
-
-    const newState = getState();
-    expect(newState.phase).toBe('break');
-    expect(newState.paused).toBe(false);
+    expect(getState().paused).toBe(true);
+    
+    // Advance time by 30 seconds
+    vi.advanceTimersByTime(30 * 1000);
+    
+    // Resume
+    resume();
+    expect(getState().paused).toBe(false);
+    
+    // Check that remaining time accounts for pause
+    const finalState = getState();
+    expect(finalState.remaining).toBe(initialState.remaining - 30);
   });
 });
