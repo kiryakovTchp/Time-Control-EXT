@@ -8,18 +8,22 @@ let interval: number | undefined;
 
 function tick(){
   if (state.phase==='idle' || state.paused) return;
-  state.remaining = Math.max(0, state.remaining - 1);
-  if (state.remaining===0) {
+  if (state.remaining <= 0) return;
+  
+  state.remaining = state.remaining - 1;
+  
+  if (state.remaining === 0) {
     if (state.phase==='work') startBreak();
     else if (state.phase==='break') finish();
+    return;
   }
+  
   emitTick();
 }
 
 function ensureInterval(){
   if (interval) return;
-  const dur = (typeof globalThis !== 'undefined' && (globalThis as any).process?.env?.VITEST) ? 250 : 1000;
-  interval = setInterval(tick, dur) as unknown as number;
+  interval = setInterval(tick, 1000) as unknown as number;
 }
 
 function clearIntervalIfIdle(){
@@ -60,7 +64,7 @@ export function startBreak(minutes?: number){
 }
 
 export function pause(){ 
-  if (guardZeroAndAuto()) return;
+  if (state.remaining <= 0) return;
   if (state.phase!=='idle' && state.remaining>0){ 
     state.paused=true; 
     emitTick(); // немедленный тик
@@ -68,7 +72,7 @@ export function pause(){
 }
 
 export function resume(){ 
-  if (guardZeroAndAuto()) return;
+  if (state.remaining <= 0) return;
   if (state.phase!=='idle' && state.remaining>0){ 
     state.paused=false; 
     emitTick(); // немедленный тик

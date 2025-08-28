@@ -21,8 +21,16 @@ export async function loadBreaksForDay(dayKey: string) {
     return all.filter(r => r.dayKey === dayKey && r.phase === 'break');
   }
 }
+
 export async function nukeDB(){
-  await db.close(); 
-  await Dexie.delete(db.name);  // важно: статический метод класса Dexie
-  await db.open();
+  await db.close();
+  
+  return new Promise<void>((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(db.name);
+    request.onsuccess = async () => {
+      await db.open();
+      resolve();
+    };
+    request.onerror = () => reject(request.error);
+  });
 }
