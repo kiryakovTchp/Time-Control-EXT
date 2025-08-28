@@ -1,12 +1,20 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { startWork, startBreak, pause, resume, stop, getState } from '../src/bg/fsm';
+import { startWork, startBreak, pause, resume, stop, getState, init } from '../src/bg/timerEngine';
 
 describe('FSM Timer', () => {
+  let alarmListener: any;
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     // Reset state
     stop();
+    
+    // Инициализируем timerEngine для регистрации alarm listener
+    init();
+    
+    // Capture alarm listener
+    alarmListener = (chrome.alarms.onAlarm.addListener as any).mock.calls[0]?.[0];
   });
 
   afterEach(() => {
@@ -34,7 +42,7 @@ describe('FSM Timer', () => {
     startWork();
     pause();
     expect(getState().paused).toBe(true);
-    
+
     resume();
     expect(getState().paused).toBe(false);
   });
@@ -52,13 +60,13 @@ describe('FSM Timer', () => {
     startWork();
     const initialState = getState();
     
-    // Advance timer by 1100ms to ensure tick happens
-    vi.advanceTimersByTime(1100);
+    // Trigger alarm manually
+    alarmListener({ name: 'timer_tick' });
     
     // Get state after tick
     const stateAfterTick = getState();
     
-    // Check that remaining time decreased by 1 (за 1100мс должен быть 1 тик)
+    // Check that remaining time decreased by 1
     expect(stateAfterTick.remaining).toBe(initialState.remaining - 1);
   });
 
@@ -66,10 +74,10 @@ describe('FSM Timer', () => {
     startWork();
     pause();
     const initialState = getState();
-    
-    vi.advanceTimersByTime(1000);
+
+    alarmListener({ name: 'timer_tick' });
     const stateAfterTick = getState();
-    
+
     expect(stateAfterTick.remaining).toBe(initialState.remaining);
   });
 
@@ -78,10 +86,10 @@ describe('FSM Timer', () => {
     // Set remaining to 1 second
     const state = getState();
     state.remaining = 1;
-    
-    vi.advanceTimersByTime(1000);
+
+    alarmListener({ name: 'timer_tick' });
     const newState = getState();
-    
+
     expect(newState.phase).toBe('break');
     expect(newState.remaining).toBe(5 * 60);
   });
@@ -91,26 +99,26 @@ describe('FSM Timer', () => {
     // Set remaining to 1 second
     const state = getState();
     state.remaining = 1;
-    
-    vi.advanceTimersByTime(1000);
+
+    alarmListener({ name: 'timer_tick' });
     const newState = getState();
-    
+
     expect(newState.phase).toBe('finished');
     expect(newState.remaining).toBe(0);
   });
 
   it('should emit TIMER/TICK after any command', () => {
     const sendMessageSpy = vi.spyOn(chrome.runtime, 'sendMessage');
-    
+
     startWork();
     expect(sendMessageSpy).toHaveBeenCalledWith({ type: 'TIMER/TICK', state: getState() });
-    
+
     pause();
     expect(sendMessageSpy).toHaveBeenCalledWith({ type: 'TIMER/TICK', state: getState() });
-    
+
     resume();
     expect(sendMessageSpy).toHaveBeenCalledWith({ type: 'TIMER/TICK', state: getState() });
-    
+
     stop();
     expect(sendMessageSpy).toHaveBeenCalledWith({ type: 'TIMER/TICK', state: getState() });
   });
@@ -119,7 +127,7 @@ describe('FSM Timer', () => {
     startWork();
     const state = getState();
     state.remaining = 0;
-    
+
     pause();
     expect(getState().paused).toBe(false);
   });
@@ -129,7 +137,7 @@ describe('FSM Timer', () => {
     const state = getState();
     state.remaining = 0;
     state.paused = true;
-    
+
     resume();
     // При remaining <= 0 resume не должен менять состояние, но автопереход может сработать
     const finalState = getState();
@@ -142,10 +150,10 @@ describe('FSM Timer', () => {
     const state = getState();
     state.remaining = 0;
     state.paused = true;
-    
+
     // This should trigger guardZero and transition to break
     pause();
-    
+
     const newState = getState();
     expect(newState.phase).toBe('break');
     expect(newState.paused).toBe(false);

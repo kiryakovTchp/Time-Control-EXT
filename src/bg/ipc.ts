@@ -1,7 +1,7 @@
 
 import { getTopDomainsToday } from './aggregator';
-import { loadBreaksForDay, nukeDB } from './db';
-import { getState, startWork, startBreak, pause, resume, stop, setSettings } from './fsm';
+import { getDB, loadBreaksForDay, nukeDB } from './db';
+import { getState, startWork, startBreak, pause, resume, stop, setSettings, sync } from './timerEngine';
 import Logger from './logger';
 import { markPopupPing } from './notify';
 
@@ -35,6 +35,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           stop();
           res = { ok: true, data: true };
           break;
+        case 'TIMER_SYNC':
+          sync();
+          res = { ok: true, data: true };
+          break;
         case 'SETTINGS_GET': {
           const raw = await chrome.storage.local.get(['settings']);
           const s = raw?.settings ? { ...DEFAULT_SETTINGS, ...raw.settings } : DEFAULT_SETTINGS;
@@ -64,7 +68,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           res = { ok: true, data: Logger.getRing() };
           break;
         case 'PING':
-          markPopupPing(); // Mark popup as active for notifications
+          markPopupPing();
           res = { ok: true, data: true };
           break;
         default:
@@ -75,5 +79,5 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       sendResponse({ ok: false, error: String(e?.message || e) });
     }
   })();
-  return true; // обязателен для async
+  return true;
 });

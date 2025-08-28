@@ -8,6 +8,11 @@ export class AppDB extends Dexie {
     this.version(1).stores({
       sessionLogs: '++id,[dayKey+phase],phase,dayKey,startedAt'
     });
+    this.version(2).stores({
+      sessionLogs: '++id,[dayKey+phase],phase,dayKey,startedAt'
+    }).upgrade(tx => {
+      // Пустой хук миграции для v2
+    });
   }
 }
 
@@ -23,12 +28,10 @@ export async function loadBreaksForDay(dayKey: string) {
   const db = getDB();
   try {
     if (!db.isOpen()) await db.open();
-    
     // Проверяем что sessionLogs существует
     if (!db.sessionLogs) {
       return [];
     }
-    
     return await db.sessionLogs
       .where('[dayKey+phase]')
       .equals([dayKey, 'break'])

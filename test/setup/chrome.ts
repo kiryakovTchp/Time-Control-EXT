@@ -2,8 +2,6 @@ import 'fake-indexeddb/auto';
 import { vi } from 'vitest';
 
 const mem = new Map<string, any>();
-
-// Глобальный мок chrome
 (globalThis as any).chrome = {
   storage: {
     session: {
@@ -47,12 +45,25 @@ const mem = new Map<string, any>();
     onMessage: {
       addListener: vi.fn(),
       removeListener: vi.fn()
+    },
+    onStartup: {
+      addListener: vi.fn()
+    },
+    onInstalled: {
+      addListener: vi.fn()
     }
   },
   notifications: {
     create: vi.fn(),
     clear: vi.fn()
   },
+  alarms: {
+    create: vi.fn(),
+    clear: vi.fn(),
+    onAlarm: {
+      addListener: vi.fn()
+    }
+  }
 } as any;
 
 // Мок для Dexie
@@ -60,7 +71,8 @@ const dbMock = {
   sessionLogs: {
     where: vi.fn().mockReturnThis(),
     equals: vi.fn().mockReturnThis(),
-    toArray: vi.fn().mockResolvedValue([])
+    toArray: vi.fn().mockResolvedValue([]),
+    add: vi.fn().mockResolvedValue(1)
   },
   close: vi.fn().mockResolvedValue(undefined),
   open: vi.fn().mockResolvedValue(undefined),
@@ -72,6 +84,7 @@ vi.mock('dexie', () => ({
   default: vi.fn().mockImplementation(() => ({
     version: vi.fn().mockReturnThis(),
     stores: vi.fn().mockReturnThis(),
+    upgrade: vi.fn().mockReturnThis(),
     sessionLogs: dbMock.sessionLogs,
     close: dbMock.close,
     open: dbMock.open,
