@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { TimerState } from '@/shared/types';
 
 export default function App(){
@@ -8,6 +8,10 @@ export default function App(){
     chrome.runtime.sendMessage({ type:'GET_STATE' }, (r)=>{ if(r?.ok) setState(r.data); });
     const onMsg = (m:any)=>{ if(m?.type==='TIMER/TICK') setState(m.state); };
     chrome.runtime.onMessage.addListener(onMsg);
+    
+    // Ping to mark popup as active
+    chrome.runtime.sendMessage({ type: 'PING' });
+    
     return ()=> chrome.runtime.onMessage.removeListener(onMsg);
   },[]);
 
@@ -23,32 +27,32 @@ export default function App(){
       </div>
       <div className="grid grid-cols-3 gap-2 max-[340px]:grid-cols-2 min-w-0">
         <button 
-          className="btn truncate" 
+          className="btn truncate min-w-0" 
           onClick={()=>cmd('TIMER_START_WORK')}
         >
           Work
         </button>
         <button 
-          className="btn truncate" 
+          className="btn truncate min-w-0" 
           onClick={()=>cmd('TIMER_START_BREAK')}
         >
           Break
         </button>
         {state.paused
           ? <button 
-              className="btn truncate" 
+              className="btn truncate min-w-0" 
               onClick={()=>cmd('TIMER_RESUME')}
             >
               Resume
             </button>
           : <button 
-              className="btn truncate" 
+              className="btn truncate min-w-0" 
               onClick={()=>cmd('TIMER_PAUSE')}
             >
               Pause
             </button>}
         <button 
-          className="btn truncate col-span-1" 
+          className="btn truncate min-w-0 col-span-1" 
           onClick={()=>cmd('TIMER_STOP')}
         >
           Stop
@@ -64,6 +68,9 @@ export default function App(){
           font-weight: 500;
           transition: all 0.2s;
           min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         .btn:hover {
           background: #f3f4f6;

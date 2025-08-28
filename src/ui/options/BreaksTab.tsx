@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { SessionLog } from '@/shared/types';
 import { formatDuration } from '@/shared/format';
 

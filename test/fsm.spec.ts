@@ -52,14 +52,14 @@ describe('FSM Timer', () => {
     startWork();
     const initialState = getState();
     
-    // Advance timer by 2 seconds to ensure tick happens
-    vi.advanceTimersByTime(2000);
+    // Advance timer by 1100ms to ensure tick happens
+    vi.advanceTimersByTime(1100);
     
     // Get state after tick
     const stateAfterTick = getState();
     
-    // Check that remaining time decreased by 2
-    expect(stateAfterTick.remaining).toBe(initialState.remaining - 2);
+    // Check that remaining time decreased by 1
+    expect(stateAfterTick.remaining).toBe(initialState.remaining - 1);
   });
 
   it('should not tick when paused', () => {
@@ -132,5 +132,19 @@ describe('FSM Timer', () => {
     
     resume();
     expect(getState().paused).toBe(true);
+  });
+
+  it('should guard zero - not stay in paused when remaining <= 0', () => {
+    startWork();
+    const state = getState();
+    state.remaining = 0;
+    state.paused = true;
+    
+    // This should trigger guardZero and transition to break
+    pause();
+    
+    const newState = getState();
+    expect(newState.phase).toBe('break');
+    expect(newState.paused).toBe(false);
   });
 });

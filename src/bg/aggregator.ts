@@ -5,20 +5,23 @@ export async function getTopDomainsToday(): Promise<DomainsToday> {
   // Get current domain stats from tracker
   const domainStats = getDomainStats();
   
-  // Calculate total seconds
-  const totalSecondsToday = Object.values(domainStats).reduce((sum, seconds) => sum + seconds, 0);
-  
   // Convert to array and sort by seconds (descending)
   const items = Object.entries(domainStats)
     .map(([domain, seconds]) => ({
       domain,
       seconds,
-      percent: totalSecondsToday > 0 ? +(seconds * 100 / totalSecondsToday).toFixed(1) : 0
+      percent: 0 // will be calculated below
     }))
     .sort((a, b) => b.seconds - a.seconds);
   
+  // Calculate total and percentages
+  const total = items.reduce((s, i) => s + i.seconds, 0) || 0;
+  
   return {
-    totalSecondsToday,
-    items
+    totalSecondsToday: total,
+    items: items.map(i => ({ 
+      ...i, 
+      percent: total ? +(i.seconds * 100 / total).toFixed(1) : 0 
+    }))
   };
 }

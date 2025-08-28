@@ -23,11 +23,12 @@ describe('IPC Handlers', () => {
     await import('../src/bg/ipc');
     
     // Simulate message
-    messageListener(message, {}, sendResponse);
+    const result = messageListener(message, {}, sendResponse);
     
     // Wait for async response
     await new Promise(resolve => setTimeout(resolve, 0));
     
+    expect(result).toBe(true); // listener returns true for async
     expect(sendResponse).toHaveBeenCalledWith({
       ok: true,
       data: expect.objectContaining({
@@ -48,10 +49,11 @@ describe('IPC Handlers', () => {
     // Import and trigger IPC handler
     await import('../src/bg/ipc');
     
-    messageListener(message, {}, sendResponse);
+    const result = messageListener(message, {}, sendResponse);
     
     await new Promise(resolve => setTimeout(resolve, 0));
     
+    expect(result).toBe(true);
     expect(sendResponse).toHaveBeenCalledWith({
       ok: true,
       data: { settings: { workMin: 30, breakMin: 10, strict: false } }
@@ -66,10 +68,11 @@ describe('IPC Handlers', () => {
     // Import and trigger IPC handler
     await import('../src/bg/ipc');
     
-    messageListener(message, {}, sendResponse);
+    const result = messageListener(message, {}, sendResponse);
     
     await new Promise(resolve => setTimeout(resolve, 0));
     
+    expect(result).toBe(true);
     expect(sendResponse).toHaveBeenCalledWith({
       ok: true,
       data: true
@@ -105,10 +108,11 @@ describe('IPC Handlers', () => {
     // Import and trigger IPC handler
     await import('../src/bg/ipc');
     
-    messageListener(message, {}, sendResponse);
+    const result = messageListener(message, {}, sendResponse);
     
     await new Promise(resolve => setTimeout(resolve, 0));
     
+    expect(result).toBe(true);
     expect(sendResponse).toHaveBeenCalledWith({
       ok: true,
       data: true
@@ -122,10 +126,11 @@ describe('IPC Handlers', () => {
     // Import and trigger IPC handler
     await import('../src/bg/ipc');
     
-    messageListener(message, {}, sendResponse);
+    const result = messageListener(message, {}, sendResponse);
     
     await new Promise(resolve => setTimeout(resolve, 0));
     
+    expect(result).toBe(true);
     expect(sendResponse).toHaveBeenCalledWith({
       ok: true,
       data: true
@@ -139,10 +144,11 @@ describe('IPC Handlers', () => {
     // Import and trigger IPC handler
     await import('../src/bg/ipc');
     
-    messageListener(message, {}, sendResponse);
+    const result = messageListener(message, {}, sendResponse);
     
     await new Promise(resolve => setTimeout(resolve, 0));
     
+    expect(result).toBe(true);
     expect(sendResponse).toHaveBeenCalledWith({
       ok: true,
       data: expect.objectContaining({
@@ -160,10 +166,11 @@ describe('IPC Handlers', () => {
     // Import and trigger IPC handler
     await import('../src/bg/ipc');
     
-    messageListener(message, {}, sendResponse);
+    const result = messageListener(message, {}, sendResponse);
     
     await new Promise(resolve => setTimeout(resolve, 0));
     
+    expect(result).toBe(true);
     expect(sendResponse).toHaveBeenCalledWith({
       ok: true,
       data: expect.any(Array)
@@ -177,10 +184,11 @@ describe('IPC Handlers', () => {
     // Import and trigger IPC handler
     await import('../src/bg/ipc');
     
-    messageListener(message, {}, sendResponse);
+    const result = messageListener(message, {}, sendResponse);
     
     await new Promise(resolve => setTimeout(resolve, 0));
     
+    expect(result).toBe(true);
     expect(sendResponse).toHaveBeenCalledWith({
       ok: true,
       data: true
@@ -194,13 +202,32 @@ describe('IPC Handlers', () => {
     // Import and trigger IPC handler
     await import('../src/bg/ipc');
     
-    messageListener(message, {}, sendResponse);
+    const result = messageListener(message, {}, sendResponse);
     
     await new Promise(resolve => setTimeout(resolve, 0));
     
+    expect(result).toBe(true);
     expect(sendResponse).toHaveBeenCalledWith({
       ok: true,
       data: expect.any(Array)
+    });
+  });
+
+  it('should handle PING', async () => {
+    const sendResponse = vi.fn();
+    const message = { type: 'PING' };
+    
+    // Import and trigger IPC handler
+    await import('../src/bg/ipc');
+    
+    const result = messageListener(message, {}, sendResponse);
+    
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
+    expect(result).toBe(true);
+    expect(sendResponse).toHaveBeenCalledWith({
+      ok: true,
+      data: true
     });
   });
 });

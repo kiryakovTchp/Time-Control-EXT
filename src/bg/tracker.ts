@@ -50,7 +50,7 @@ function updateDomainStats() {
 const debouncedUpdate = debounce(updateDomainStats, 1000);
 
 // Tab activation handler
-function handleTabActivated(activeInfo: chrome.tabs.TabActiveInfo) {
+function handleTabActivated(activeInfo: any) {
   if (!isTracking) return;
   
   // Update previous tab stats
@@ -80,7 +80,7 @@ function handleTabActivated(activeInfo: chrome.tabs.TabActiveInfo) {
 }
 
 // Tab update handler
-function handleTabUpdated(tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) {
+function handleTabUpdated(tabId: number, changeInfo: any, tab: chrome.tabs.Tab) {
   if (!isTracking || !changeInfo.url || tabId !== tab.id) return;
   
   // Update previous tab stats
@@ -105,7 +105,7 @@ function handleTabUpdated(tabId: number, changeInfo: chrome.tabs.TabChangeInfo, 
 }
 
 // Window focus handler
-function handleWindowFocusChanged(windowId: number) {
+function handleWindowFocusChanged(_windowId: number) {
   if (!isTracking) return;
   
   // Update stats when window gains focus
